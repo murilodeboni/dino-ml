@@ -12,7 +12,7 @@ class Obstacle:
             self.width = OBSTACLE_WIDTH
             self.height = OBSTACLE_HEIGHT
         else:  # bird
-            self.y = GROUND_Y - BIRD_HEIGHT - random.choice([50, 80])
+            self.y = GROUND_Y - BIRD_HEIGHT - random.choice([20, 40])
             self.width = OBSTACLE_WIDTH
             self.height = BIRD_HEIGHT
 

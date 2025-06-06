@@ -38,9 +38,22 @@ class DinoEnv:
         self.score = 0
         self.done = False
         self.spawn_timer = 0
+
+        # Force an obstacle to spawn nearby
+        kind = self.rng.choice(["tree", "bird"])
+        first_obstacle_x = self.dino.x + 300  # Or 80–150 for more jumps/ducks
+        self.obstacles.append(Obstacle(first_obstacle_x, kind))
         return self._get_state()
 
     def step(self, action):
+        self.action = action
+        difficulty = max(5, 30 - self.score // 100)  # Spawns faster as score increases
+
+        if self.spawn_timer > self.rng.randint(difficulty, difficulty + 10):
+            kind = self.rng.choice(["tree", "bird"])
+            self.obstacles.append(Obstacle(SCREEN_WIDTH, kind))
+            self.spawn_timer = 0
+
         # Actions: 0 = do nothing, 1 = jump, 2 = duck
         if action == 1:
             self.dino.jump()
@@ -48,6 +61,7 @@ class DinoEnv:
             self.dino.duck()
         else:
             self.dino.unduck()
+
         self.dino.update()
 
         # Obstacles
