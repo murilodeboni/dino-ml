@@ -18,10 +18,13 @@ class Dino:
             self.is_jumping = True
 
     def duck(self):
+        self.is_ducking = True
+        self.height = DINO_HEIGHT // 2
+
         if not self.is_jumping:
-            self.is_ducking = True
-            self.height = DINO_HEIGHT // 2
             self.y = GROUND_Y - self.height
+
+        self.velocity_y += 2*GRAVITY
 
     def unduck(self):
         if self.is_ducking:
