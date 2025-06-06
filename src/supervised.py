@@ -39,9 +39,6 @@ def generate_dataset(env):
     x = np.array(states, dtype=np.float32)
     y = np.array(actions, dtype=np.int64)
 
-    unique, counts = np.unique(actions, return_counts=True)
-    print("Action distribution:", dict(zip(unique, counts)))
-
     return x, y
 
 

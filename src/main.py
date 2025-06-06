@@ -16,7 +16,7 @@ if __name__ == "__main__":
     # Now, test with desired rendering and visualization
     env = DinoEnv(render_mode=SHOW_GAME)
     env.seed(42)
-    viz = NeuralNetworkVisualizer(input_dim=7, hidden_dim=16, output_dim=3) if SHOW_NEURONS else None
+    viz = NeuralNetworkVisualizer(input_dim=6, hidden_dim=16, output_dim=3) if SHOW_NEURONS else None
 
     obs = env.reset()
     done = False
@@ -38,7 +38,7 @@ if __name__ == "__main__":
             hidden_vals = net.activations['fc1'][0]
             output_vals = logits[0].numpy()
             viz.draw(input_vals, hidden_vals, output_vals)
-            plt.pause(0.0001)  # For live updating
+            # plt.pause(0.00001)  # For live updating
 
     if SHOW_NEURONS:
         plt.ioff()
