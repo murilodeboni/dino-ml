@@ -21,7 +21,7 @@ if __name__ == "__main__":
         env.seed(42)
         sup.test_model(env, net, render=args.render)
     elif args.mode == 'dqn':
-        net = train_dqn(num_episodes=500, render=args.render)
+        net = train_dqn(num_episodes=1001, render=args.render)
         # Test the trained DQN agent
         env = DinoEnv(render_mode=True)
         obs = env.reset()

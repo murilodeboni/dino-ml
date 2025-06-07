@@ -36,10 +36,26 @@ def train_dqn(num_episodes=500, max_steps=1000, render=False):
     gamma = 0.99
     epsilon = 1.0
     epsilon_min = 0.05
-    epsilon_decay = 0.995
+    epsilon_decay = 0.999
     target_update_freq = 10
+    rewards_history = []
+    checkpoint = torch.load('checkpoint.pt')
+    net.load_state_dict(checkpoint['model_state_dict'])
+    optimizer.load_state_dict(checkpoint['optimizer_state_dict'])
+    target_net.load_state_dict(checkpoint['target_net_state_dict'])
+    epsilon = checkpoint['epsilon']
 
     for episode in range(num_episodes):
+        if (episode + 1) % 1000 == 0:  # Save every 1000 episodes
+            torch.save({
+                'model_state_dict': net.state_dict(),
+                'optimizer_state_dict': optimizer.state_dict(),
+                'target_net_state_dict': target_net.state_dict(),
+                'epsilon': epsilon,
+                'episode': episode,
+                # 'replay_buffer': buffer  # Can pickle if needed, but not essential for RL
+            }, 'checkpoint.pt')
+            print(f"Checkpoint saved at episode {episode+1}")
         obs = env.reset()
         total_reward = 0
         for step in range(max_steps):
@@ -86,9 +102,17 @@ def train_dqn(num_episodes=500, max_steps=1000, render=False):
         if episode % target_update_freq == 0:
             target_net.load_state_dict(net.state_dict())
 
-        print(f"Episode {episode + 1}: reward = {total_reward}")
+        rewards_history.append(total_reward)
+        if (episode+1) % 100 == 0:
+            avg = np.mean(rewards_history[-100:])
+            print(f"Ep {episode+1}, avg reward (last 100): {avg:.2f}, epsilon: {epsilon:.3f}")
 
+    import matplotlib.pyplot as plt
+    plt.plot(rewards_history, label='Reward')
+    plt.legend()
+    plt.show()
     env.close()
+
     return net
 
 

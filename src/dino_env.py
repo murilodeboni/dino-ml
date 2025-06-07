@@ -87,7 +87,7 @@ class DinoEnv:
         obs = self._get_state()
         reward = 1
         if self.done:
-            reward = -100
+            reward = -50
         return obs, reward, self.done, {}
 
     def _rects_collide(self, a, b):
