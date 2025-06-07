@@ -1,46 +1,36 @@
 import torch
-from dino_env import DinoEnv
-import matplotlib.pyplot as plt
-from nn_visualizer import NeuralNetworkVisualizer
-import src.supervised as sup
 
-SHOW_GAME = True           # Toggle game window on/off
-SHOW_NEURONS = False        # Toggle neural network visualization
+from src.dino_env import DinoEnv
+from src.train_dqn import train_dqn
 
 if __name__ == "__main__":
-    # Dataset creation and training (no rendering needed here)
-    env = DinoEnv(render_mode=False)
-    states, actions = sup.generate_dataset(env)
-    net = sup.train(states, actions)
+    import argparse
+    import src.supervised as sup
 
-    # Now, test with desired rendering and visualization
-    env = DinoEnv(render_mode=SHOW_GAME)
-    env.seed(42)
-    viz = NeuralNetworkVisualizer(input_dim=6, hidden_dim=16, output_dim=3) if SHOW_NEURONS else None
+    parser = argparse.ArgumentParser()
+    parser.add_argument('--mode', type=str, choices=['supervised', 'dqn'], default='dqn')
+    parser.add_argument('--render', action='store_true')
+    args = parser.parse_args()
 
-    obs = env.reset()
-    done = False
-
-    if SHOW_NEURONS:
-        plt.ion()  # Interactive plotting on
-
-    while not done:
-        obs_tensor = torch.tensor(obs, dtype=torch.float32).unsqueeze(0)
-        with torch.no_grad():
-            logits = net(obs_tensor)
-        action = logits.argmax(dim=1).item()
-        obs, reward, done, info = env.step(action)
-
-        if SHOW_GAME:
+    if args.mode == 'supervised':
+        env = DinoEnv(render_mode=False)
+        states, actions = sup.generate_dataset(env)
+        net = sup.train(states, actions)
+        # Test visually
+        env = DinoEnv(render_mode=args.render)
+        env.seed(42)
+        sup.test_model(env, net, render=args.render)
+    elif args.mode == 'dqn':
+        net = train_dqn(num_episodes=500, render=args.render)
+        # Test the trained DQN agent
+        env = DinoEnv(render_mode=True)
+        obs = env.reset()
+        done = False
+        while not done:
+            with torch.no_grad():
+                obs_tensor = torch.tensor(obs, dtype=torch.float32).unsqueeze(0)
+                q_vals = net(obs_tensor)
+                action = q_vals.argmax(dim=1).item()
+            obs, reward, done, info = env.step(action)
             env.render()
-        if SHOW_NEURONS:
-            input_vals = obs_tensor[0].numpy()
-            hidden_vals = net.activations['fc1'][0]
-            output_vals = logits[0].numpy()
-            viz.draw(input_vals, hidden_vals, output_vals)
-            # plt.pause(0.00001)  # For live updating
-
-    if SHOW_NEURONS:
-        plt.ioff()
-        plt.show()
-    env.close()
+        env.close()
