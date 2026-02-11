@@ -48,8 +48,22 @@ class DinoEnv:
         return self._get_state()
 
     def step(self, action):
+        """Execute action for multiple frames (frame skipping)."""
+        frame_skip = 4
+        total_reward = 0
+
+        for _ in range(frame_skip):
+            obs, reward, done, info = self._step_single(action)
+            total_reward += reward
+            if done:
+                break
+
+        return obs, total_reward, self.done, info
+
+    def _step_single(self, action):
+        """Execute a single frame step."""
         self.action = action
-        self.spawn_timer += 1  # Moved up here
+        self.spawn_timer += 1
 
         # --- SPAWN OBSTACLE LOGIC (single block) ---
         difficulty = max(5, 30 - self.score // 100)
@@ -69,7 +83,7 @@ class DinoEnv:
 
         # --- OBSTACLE UPDATE ---
         for obs in self.obstacles:
-            obs.update(self.speed)  # Make sure speed is defined (e.g., self.speed = 6 or dynamic)
+            obs.update(self.speed)
 
         # --- JUST PASSED OBSTACLE LOGIC ---
         just_passed_obstacle = False
@@ -88,17 +102,15 @@ class DinoEnv:
             if self._rects_collide(dino_rect, obs_rect):
                 self.done = True
 
-        self.score += 1  # Or use time
+        self.score += 1
 
         obs = self._get_state()
 
         reward = 1  # Survive
         if self.done:
-            reward = -20  # Smaller penalty
+            reward = -20
         if just_passed_obstacle:
             reward += 20
-        if obs[0] < 30 and action == 0:  # Very close, didn't act
-            reward -= 10
 
         return obs, reward, self.done, {}
 
@@ -154,6 +166,9 @@ class DinoEnv:
         dino_y /= 240
         distance2 /= SCREEN_WIDTH
         obstacle_speed /= 20  # if 20 is roughly max
+        dino_vy /= 20  # velocity ranges roughly -15 to +15
+        frames_since_jump /= 40  # jump takes ~30-40 frames
+        frames_since_duck /= 50
 
         return [distance, height, kind, y_pos, dino_y, is_jumping, is_ducking, dino_vy, distance2, obstacle_speed,
                 frames_since_jump, frames_since_duck]

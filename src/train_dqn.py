@@ -24,27 +24,35 @@ class ReplayBuffer:
         return len(self.buffer)
 
 
-def train_dqn(num_episodes=500, max_steps=1000, render=False):
+def train_dqn(num_episodes=500, max_steps=1000, render=False, fresh=False):
     env = DinoEnv(render_mode=render)
     net = DinoNet()
     target_net = DinoNet()
     target_net.load_state_dict(net.state_dict())
     target_net.eval()
-    optimizer = torch.optim.Adam(net.parameters(), lr=1e-3)
-    buffer = ReplayBuffer(capacity=5000)
+    optimizer = torch.optim.Adam(net.parameters(), lr=5e-4)
+    buffer = ReplayBuffer(capacity=20000)
     batch_size = 64
     gamma = 0.99
     epsilon = 1.0
     epsilon_min = 0.05
-    epsilon_decay = 0.999
+    epsilon_decay = 0.995
     target_update_freq = 10
     rewards_history = []
     best_avg_reward = -float('inf')
-    checkpoint = torch.load('checkpoint.pt')
-    epsilon = checkpoint['epsilon']
-    net.load_state_dict(checkpoint['model_state_dict'])
-    optimizer.load_state_dict(checkpoint['optimizer_state_dict'])
-    target_net.load_state_dict(checkpoint['target_net_state_dict'])
+
+    if not fresh:
+        try:
+            checkpoint = torch.load('checkpoint.pt')
+            epsilon = checkpoint['epsilon']
+            net.load_state_dict(checkpoint['model_state_dict'])
+            optimizer.load_state_dict(checkpoint['optimizer_state_dict'])
+            target_net.load_state_dict(checkpoint['target_net_state_dict'])
+            print(f"Loaded checkpoint, resuming with epsilon={epsilon:.3f}")
+        except FileNotFoundError:
+            print("No checkpoint found, starting fresh")
+    else:
+        print("Starting fresh training")
 
     for episode in range(num_episodes):
         if (episode + 1) % 1000 == 0:  # Save every 1000 episodes

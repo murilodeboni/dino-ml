@@ -10,6 +10,7 @@ if __name__ == "__main__":
     parser = argparse.ArgumentParser()
     parser.add_argument('--mode', type=str, choices=['supervised', 'dqn'], default='dqn')
     parser.add_argument('--render', action='store_true')
+    parser.add_argument('--fresh', action='store_true', help='Start training from scratch (ignore checkpoint)')
     args = parser.parse_args()
 
     if args.mode == 'supervised':
@@ -21,7 +22,7 @@ if __name__ == "__main__":
         env.seed(42)
         sup.test_model(env, net, render=args.render)
     elif args.mode == 'dqn':
-        net = train_dqn(num_episodes=1001, render=args.render)
+        net = train_dqn(num_episodes=1001, render=args.render, fresh=args.fresh)
         # Test the trained DQN agent
         env = DinoEnv(render_mode=True)
         obs = env.reset()
