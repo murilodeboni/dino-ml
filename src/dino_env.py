@@ -17,6 +17,8 @@ class DinoEnv:
         self.clock = None
         self.rng = random.Random()
         self.seed_value = None
+        self.last_passed_obstacle_id = None
+        self.speed = 6
         if self.render_mode:
             assert pygame is not None, "Pygame must be installed for rendering."
             pygame.init()
@@ -46,48 +48,70 @@ class DinoEnv:
         return self._get_state()
 
     def step(self, action):
-        self.action = action
-        difficulty = max(5, 30 - self.score // 100)  # Spawns faster as score increases
+        """Execute action for multiple frames (frame skipping)."""
+        frame_skip = 4
+        total_reward = 0
 
+        for _ in range(frame_skip):
+            obs, reward, done, info = self._step_single(action)
+            total_reward += reward
+            if done:
+                break
+
+        return obs, total_reward, self.done, info
+
+    def _step_single(self, action):
+        """Execute a single frame step."""
+        self.action = action
+        self.spawn_timer += 1
+
+        # --- SPAWN OBSTACLE LOGIC (single block) ---
+        difficulty = max(5, 30 - self.score // 100)
         if self.spawn_timer > self.rng.randint(difficulty, difficulty + 10):
             kind = self.rng.choice(["tree", "bird"])
             self.obstacles.append(Obstacle(SCREEN_WIDTH, kind))
             self.spawn_timer = 0
 
-        # Actions: 0 = do nothing, 1 = jump, 2 = duck
+        # --- ACTIONS ---
         if action == 1:
             self.dino.jump()
         elif action == 2:
             self.dino.duck()
         else:
             self.dino.unduck()
-
         self.dino.update()
 
-        # Obstacles
-        self.spawn_timer += 1
-        if self.spawn_timer > self.rng.randint(60, 90):
-            kind = self.rng.choice(["tree", "bird"])
-            self.obstacles.append(Obstacle(SCREEN_WIDTH, kind))
-            self.spawn_timer = 0
-
+        # --- OBSTACLE UPDATE ---
         for obs in self.obstacles:
-            obs.update(6)
+            obs.update(self.speed)
+
+        # --- JUST PASSED OBSTACLE LOGIC ---
+        just_passed_obstacle = False
+        for obs in self.obstacles:
+            if not hasattr(obs, 'already_counted') and obs.x + obs.width < self.dino.x:
+                just_passed_obstacle = True
+                obs.already_counted = True
+                break
+
         self.obstacles = [obs for obs in self.obstacles if not obs.is_off_screen()]
 
-        # Collision
+        # --- COLLISION ---
         dino_rect = (self.dino.x, self.dino.y, self.dino.width, self.dino.height)
         for obs in self.obstacles:
             obs_rect = (obs.x, obs.y, obs.width, obs.height)
             if self._rects_collide(dino_rect, obs_rect):
                 self.done = True
 
-        self.score += 1  # Or use time
+        self.score += 1
 
         obs = self._get_state()
-        reward = 1
+
+        reward = 1  # Survive
         if self.done:
-            reward = -100
+            reward = -20
+        if just_passed_obstacle:
+            reward += 20
+
         return obs, reward, self.done, {}
 
     def _rects_collide(self, a, b):
@@ -99,19 +123,55 @@ class DinoEnv:
     def _get_state(self):
         # Next obstacle info
         if self.obstacles:
-            next_obs = min(self.obstacles, key=lambda o: o.x if o.x > self.dino.x else float('inf'))
-            distance = next_obs.x - self.dino.x
-            height = next_obs.height
-            kind = 0 if next_obs.kind == "tree" else 1
-            y_pos = next_obs.y
+            future_obs = [o for o in self.obstacles if o.x > self.dino.x]
+            if future_obs:
+                next_obs = min(future_obs, key=lambda o: o.x)
+                distance = next_obs.x - self.dino.x
+                height = next_obs.height
+                kind = 0 if next_obs.kind == "tree" else 1
+                y_pos = next_obs.y
+            else:
+                distance = SCREEN_WIDTH
+                height = 0
+                kind = 0
+                y_pos = 0
+
+            # Second obstacle distance
+            if len(future_obs) > 1:
+                distance2 = sorted(future_obs, key=lambda o: o.x)[1].x - self.dino.x
+            else:
+                distance2 = SCREEN_WIDTH
         else:
             distance = SCREEN_WIDTH
             height = 0
             kind = 0
             y_pos = 0
+            distance2 = SCREEN_WIDTH
+
         dino_y = self.dino.y
-        dino_state = int(self.dino.is_jumping) * 1 + int(self.dino.is_ducking) * 2
-        return [distance, height, kind, y_pos, dino_y, dino_state]
+        is_jumping = int(self.dino.is_jumping)
+        is_ducking = int(self.dino.is_ducking)
+        # If you have dino.vy:
+        dino_vy = getattr(self.dino, "vy", 0)
+        # If you track obstacle speed:
+        obstacle_speed = getattr(self, "speed", 6)
+
+        frames_since_jump = self.dino.frames_since_jump
+        frames_since_duck = self.dino.frames_since_duck
+
+        # Normalize
+        distance /= SCREEN_WIDTH
+        height /= 100  # If max height is 100
+        y_pos /= 240
+        dino_y /= 240
+        distance2 /= SCREEN_WIDTH
+        obstacle_speed /= 20  # if 20 is roughly max
+        dino_vy /= 20  # velocity ranges roughly -15 to +15
+        frames_since_jump /= 40  # jump takes ~30-40 frames
+        frames_since_duck /= 50
+
+        return [distance, height, kind, y_pos, dino_y, is_jumping, is_ducking, dino_vy, distance2, obstacle_speed,
+                frames_since_jump, frames_since_duck]
 
     def render(self):
         if not self.render_mode:

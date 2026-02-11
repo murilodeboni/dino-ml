@@ -1,7 +1,7 @@
 import numpy as np
 import torch
 from torch.utils.data import DataLoader, TensorDataset
-from model import DinoNet
+from src.model import DinoNet
 from src.constants import *
 
 
@@ -60,3 +60,20 @@ def train(states, actions):
         print(f"Epoch {epoch + 1}: loss = {loss.item():.4f}")
 
     return net
+
+
+def test_model(env, net, render=False):
+    obs = env.reset()
+    done = False
+    total_reward = 0
+    while not done:
+        with torch.no_grad():
+            obs_tensor = torch.tensor(obs, dtype=torch.float32).unsqueeze(0)
+            logits = net(obs_tensor)
+        action = logits.argmax(dim=1).item()
+        obs, reward, done, info = env.step(action)
+        total_reward += reward
+        if render:
+            env.render()
+    env.close()
+    print("Test game ended. Total score:", env.score)

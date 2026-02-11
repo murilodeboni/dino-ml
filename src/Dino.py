@@ -11,6 +11,8 @@ class Dino:
         self.velocity_y = 0
         self.is_jumping = False
         self.is_ducking = False
+        self.frames_since_jump = 0
+        self.frames_since_duck = 0
 
     def jump(self):
         if not self.is_jumping:
@@ -36,6 +38,15 @@ class Dino:
         self.y += self.velocity_y
         if self.is_jumping:
             self.velocity_y += GRAVITY
+            self.frames_since_jump += 1
+        else:
+            self.frames_since_jump = 0
+
+        if self.is_ducking:
+            self.frames_since_duck += 1
+        else:
+            self.frames_since_duck = 0
+
         if self.y >= GROUND_Y - self.height:
             self.y = GROUND_Y - self.height
             self.velocity_y = 0

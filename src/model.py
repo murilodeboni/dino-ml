@@ -5,7 +5,7 @@ import torch.nn.functional as F
 
 
 class DinoNet(nn.Module):
-    def __init__(self, input_dim=6, hidden_dim=16, output_dim=3):
+    def __init__(self, input_dim=12, hidden_dim=64, output_dim=3):
         super().__init__()
         self.fc1 = nn.Linear(input_dim, hidden_dim)
         self.fc2 = nn.Linear(hidden_dim, hidden_dim)
