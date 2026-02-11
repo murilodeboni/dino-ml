@@ -93,7 +93,9 @@ def train_dqn(num_episodes=500, max_steps=1000, render=False, fresh=False):
                 dones = torch.tensor(dones, dtype=torch.float32)
 
                 q_values = net(states).gather(1, actions.unsqueeze(1)).squeeze(1)
-                next_q_values = target_net(next_states).max(1)[0]
+                # Double DQN: online net selects best action, target net evaluates it
+                best_actions = net(next_states).argmax(1, keepdim=True)
+                next_q_values = target_net(next_states).gather(1, best_actions).squeeze(1)
                 targets = rewards + gamma * next_q_values * (1 - dones)
                 loss = torch.nn.functional.mse_loss(q_values, targets.detach())
                 optimizer.zero_grad()
